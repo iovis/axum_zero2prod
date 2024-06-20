@@ -1,10 +1,9 @@
 #[tokio::test]
 async fn health_check_test() {
-    spawn_app();
+    let url = spawn_app().await;
 
-    let client = reqwest::Client::new();
-    let response = client
-        .get("http://localhost:3000/health_check")
+    let response = reqwest::Client::new()
+        .get(format!("{url}/health_check"))
         .send()
         .await
         .expect("Failed to execute request");
@@ -13,6 +12,11 @@ async fn health_check_test() {
     assert_eq!(Some(0), response.content_length());
 }
 
-fn spawn_app() {
-    tokio::spawn(async move { zero2prod::run().await.unwrap() });
+async fn spawn_app() -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    tokio::spawn(async move { zero2prod::run(listener).await.unwrap() });
+
+    format!("http://127.0.0.1:{port}")
 }
