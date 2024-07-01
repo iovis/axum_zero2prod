@@ -1,5 +1,5 @@
 use sqlx::SqlitePool;
-use zero2prod::configuration;
+use uuid::Uuid;
 
 pub struct TestApp {
     pub address: String,
@@ -10,10 +10,9 @@ async fn spawn_app() -> TestApp {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
 
-    let config = configuration::get().expect("Failed to read configuration");
-    let db = SqlitePool::connect(&config.database.name)
-        .await
-        .expect("Failed to connect to DB");
+    // `mode=rwc` => create if missing
+    let db_name = format!("sqlite://db/test-{}.db?mode=rwc", Uuid::new_v4());
+    let db = configure_database(&db_name).await;
 
     let server = zero2prod::startup::run(listener, db.clone());
     tokio::spawn(server);
@@ -22,6 +21,19 @@ async fn spawn_app() -> TestApp {
         address: format!("http://127.0.0.1:{port}"),
         db,
     }
+}
+
+pub async fn configure_database(name: &str) -> SqlitePool {
+    let db = SqlitePool::connect(name)
+        .await
+        .expect("Failed to connect to create {name}");
+
+    sqlx::migrate!("./migrations")
+        .run(&db)
+        .await
+        .expect("Failed to migrate {name}");
+
+    db
 }
 
 #[tokio::test]

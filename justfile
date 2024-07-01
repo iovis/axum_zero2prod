@@ -40,3 +40,6 @@ db_migrate: db_create
 
 db_create:
     sqlx database create
+
+db_cleanup:
+    rm -rf db/test-*
