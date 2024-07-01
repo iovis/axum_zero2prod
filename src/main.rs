@@ -1,8 +1,16 @@
-use zero2prod::run;
+use sqlx::SqlitePool;
+use zero2prod::configuration;
+use zero2prod::startup::run;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let config = configuration::get().expect("Failed to read configuration");
+    let db = SqlitePool::connect(&config.database.name)
+        .await
+        .expect("Failed to connect to DB");
 
-    run(listener).await
+    let addr = format!("127.0.0.1:{}", config.application_port);
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+    run(listener, db).await
 }

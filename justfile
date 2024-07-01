@@ -30,4 +30,13 @@ test:
 
 # Open the DB
 db:
-    pgcli $DATABASE_URL
+    litecli $DATABASE_URL
+
+db_reset:
+    sqlx database reset -y
+
+db_migrate: db_create
+    sqlx migrate run
+
+db_create:
+    sqlx database create
